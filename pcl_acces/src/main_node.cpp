@@ -22,7 +22,7 @@ using namespace std;
 cv::Mat image;
 cv::Mat drawing;
 
-typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+typedef pcl::PointCloud<pcl::PointXY> PointCloud;
 visualization_msgs::MarkerArray object_cube;
 
 ros::Publisher objectsArray_pub;
@@ -41,11 +41,11 @@ void pointcloud2Callbak(PointCloud* msg)
 
 //    printf("GET Lidar\n");
 //    printf ("Cloud: width = %d, height = %d\n", msg->width, msg->height);
-    BOOST_FOREACH (const pcl::PointXYZ& pt, msg->points){
-//        printf ("\t(%f, %f, %f)\n", pt.x, pt.y, pt.z);
-        if(pt.x >= -20 && pt.x <= 20 && pt.y >=-20 && pt.y <=20 && pt.z >= 0.3 && pt.z <=3){
-            int y = 500 - ((pt.x * 12.5) + 250);
-            int x = 500 - ((pt.y * 12.5) + 250);
+    BOOST_FOREACH (const pcl::PointXY& pt, msg->points){
+       printf ("\t(%f, %f)\n", pt.x, pt.y);
+        if(pt.x >= -5 && pt.x <= 5 && pt.y >=-5 && pt.y <=5){
+            int y = 500 - ((pt.x * 50) + 250);
+            int x = 500 - ((pt.y * 50) + 250);
             image.at<uchar>(cv::Point (x,y)) = 255;
         }
     }
@@ -53,10 +53,10 @@ void pointcloud2Callbak(PointCloud* msg)
     cv::Mat element_d = cv::getStructuringElement( cv::MORPH_RECT,
                                                    cv::Size( 5, 5 ));
     cv::Mat element_e = cv::getStructuringElement( cv::MORPH_RECT,
-                                                   cv::Size( 10, 10 ));
+                                                   cv::Size( 7, 7 ));
 
     cv::dilate( image, image, element_d );
-    cv::dilate( image, image, element_d );
+    // cv::dilate( image, image, element_d );
 //    cv::erode( image, image, element_e );
 
     cv::dilate( image, image, element_d );
@@ -76,7 +76,7 @@ void pointcloud2Callbak(PointCloud* msg)
 
     visualization_msgs::Marker obj;
 
-    obj.header.frame_id = "ego_vehicle/vlp16_1";
+    obj.header.frame_id = "laser_link";
     obj.header.stamp = ros::Time::now();
     obj.ns = "obs";
     obj.type = visualization_msgs::Marker::CUBE;
@@ -123,10 +123,10 @@ void pointcloud2Callbak(PointCloud* msg)
 
 //        [170, 133]	[170, 124]	[181, 124]	[181, 133]
 
-        x0 = (500 - rect_points[0].y - 250) * 20 / 250 ;
-        y0 = (rect_points[0].x - 250) * 20 / 250 * -1;
-        x1 = (500 - rect_points[2].y - 250) * 20 / 250;
-        y1 = (rect_points[2].x - 250) * 20 / 250 * -1;
+        x0 = (500 - rect_points[0].y - 250) * 5 / 250 ;
+        y0 = (rect_points[0].x - 250) * 5 / 250 * -1;
+        x1 = (500 - rect_points[2].y - 250) * 5 / 250;
+        y1 = (rect_points[2].x - 250) * 5 / 250 * -1;
 
 //        std::cout << rotateRect.angle << "\n";
 
@@ -136,8 +136,8 @@ void pointcloud2Callbak(PointCloud* msg)
 //        obj.scale.z = 1.0;
 
         obj.id = i;
-        obj.scale.x = (calculateDistance(rect_points[0].x, rect_points[0].y, rect_points[1].x, rect_points[1].y)) * 20 / 250;
-        obj.scale.y = (calculateDistance(rect_points[0].x, rect_points[0].y, rect_points[3].x, rect_points[3].y)) * 20 / 250;
+        obj.scale.x = (calculateDistance(rect_points[0].x, rect_points[0].y, rect_points[1].x, rect_points[1].y)) * 5 / 250;
+        obj.scale.y = (calculateDistance(rect_points[0].x, rect_points[0].y, rect_points[3].x, rect_points[3].y)) * 5 / 250;
         obj.scale.z = 1.0;
 
         tf::Quaternion q;
@@ -152,8 +152,8 @@ void pointcloud2Callbak(PointCloud* msg)
 //        obj.pose.position.y = (y0+y1)/2.0;
 //        obj.pose.position.z = 0.0;
 
-        obj.pose.position.x = (x0+x1) / 2.0;
-        obj.pose.position.y = (y0+y1) / 2.0;
+        obj.pose.position.x = (x0+x1) / 2.0 ;
+        obj.pose.position.y = (y0+y1) / 2.0 ;
         obj.pose.position.z = 0.0;
 
         object_cube.markers.push_back(obj);
@@ -166,9 +166,9 @@ void pointcloud2Callbak(PointCloud* msg)
 
 void cloud_cb (const sensor_msgs::PointCloud2ConstPtr& input)
 {
-    pcl::PointCloud<pcl::PointXYZ> cloud;
+    pcl::PointCloud<pcl::PointXY> cloud;
     pcl::fromROSMsg (*input, cloud);
-
+    std::cout << "get pcl2msg\n";
     pointcloud2Callbak(&cloud);
 
 }
@@ -184,7 +184,7 @@ int main(int argc, char **argv)
 
 
     ros::NodeHandle nh;
-    ros::Subscriber sub = nh.subscribe ("/carla/ego_vehicle/vlp16_1", 1, cloud_cb);
+    ros::Subscriber sub = nh.subscribe ("/lslidar_point_cloud", 1, cloud_cb);
     objectsArray_pub = nh.advertise<visualization_msgs::MarkerArray>("/lidar/objects", 1);
 
     ros::Rate r(50);
